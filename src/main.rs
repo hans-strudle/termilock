@@ -57,7 +57,7 @@ fn main() -> io::Result<()> {
         }
     }
 
-    let (width, height) = terminal::size()?;
+    let (mut width, mut height) = terminal::size()?;
     let mut stdout = io::stdout();
 
     // let hashed = pass::hash_pass(&cli.pass);
@@ -74,12 +74,11 @@ fn main() -> io::Result<()> {
     // let e = Element::new("asdf", 10, 10);
     // stdout.queue(e)?;
     // stdout.queue(Element::new("heyyyy", 10, 40))?;
-    let mut is_entering: bool = false;
+
     let mut bad_pass_attempt: bool = false;
 
     let mut quit = false;
     // let poll_duration = Duration::from_millis(500);
-    // let mut input = Vec::new();
     let mut input = String::new();
     let star = format!("{}", "*".blue());
     while !quit {
@@ -92,7 +91,7 @@ fn main() -> io::Result<()> {
             if input.len() > place {
                 stdout.write(star.as_bytes())?;
             }
-            stdout.flush()?;
+            // stdout.flush()?;
             x += 2;
         }
         if bad_pass_attempt {
@@ -102,14 +101,22 @@ fn main() -> io::Result<()> {
         }
         // reset cursor to current pass input
         let diff = (2 * input.len()) as u16;
-        stdout.queue(cursor::MoveTo(width / 2 - offset + diff, height / 2));
-        stdout.flush();
+        stdout.queue(cursor::MoveTo(width / 2 - offset + diff, height / 2))?;
+        stdout.flush()?;
 
+        //if event::poll(Duration::ZERO)? {
         match event::read()? {
+            event::Event::Resize(nw, nh) => {
+                width = nw;
+                height = nh;
+                stdout.queue(terminal::Clear(terminal::ClearType::All))?;
+                stdout.flush();
+            },
             event::Event::Key(event) => {
-                is_entering = true;
                 match event.code {
                     event::KeyCode::Tab => {}, // skip tabs?
+                    event::KeyCode::Home => {}, // skip Home?
+                    event::KeyCode::Char(' ') => {}, // skip spaces
                     event::KeyCode::Backspace => {
                         if input.len() > 0 {
                             input.pop();
@@ -135,15 +142,14 @@ fn main() -> io::Result<()> {
                 if input.len() == PASS_LENGTH {
                     // wrong password
                     // reset?
-                    // stdout.queue(terminal::Clear(terminal::ClearType::All));
                     bad_pass_attempt = true;
-                    is_entering = false;
                     input = "".to_string();
                     // stdout.flush()?;
                 }
             },
             _ => {}
         }
+        // }
         stdout.flush();
         // quit = true; 
     }

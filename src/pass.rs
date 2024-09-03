@@ -37,11 +37,3 @@ pub fn get_password() -> io::Result<String> {
     let s = file.read_to_string(&mut content)?;
     Ok(content)
 }
-
-
-pub fn _dep_set_password(pass: &str) -> io::Result<()> {
-    let mut file = get_password_file()?;
-    println!("pass?");
-    println!("{}", pass);
-    file.write_all(pass.as_bytes())
-}

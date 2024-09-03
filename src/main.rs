@@ -1,17 +1,13 @@
 // use crossterm::terminal;
 mod pass;
+mod cli;
+use cli::Cli;
+use clap::{Parser, Subcommand};
 use std::io::{Write, self};
 use std::fs;
 use std::io::prelude::*;
 use std::fmt;
 use std::env;
-
-use std::path::PathBuf;
-
-use clap::{Parser, Subcommand};
-
-// use crate::{csi, impl_display, Command};
-
 use crossterm::{
     ExecutableCommand, QueueableCommand,
     terminal, cursor, style::{self, Stylize},
@@ -19,10 +15,6 @@ use crossterm::{
 };
 use std::time::Duration;
 use std::thread;
-
-// const LOCK_STRING: &str = "_ _ _ _";
-// const PASS: [&str; 4] = ["1","2","3","4"];
-// const PASS: &str = "1234";
 
 struct Element {
     x: u16,
@@ -45,27 +37,6 @@ impl crossterm::Command for Element {
         write!(f, csi!("{};{}H"), self.x + 1, self.y + 1);
         write!(f, "{}", self.text)
     }
-}
-
-#[derive(Parser)]
-#[command(version, about, long_about = None)]
-struct Cli {
-    /// Optional name to operate on
-    name: Option<String>,
-
-    #[arg(short, long)]
-    pass: String,
-
-    /// Sets a custom config file
-    #[arg(short, long, value_name = "FILE")]
-    config: Option<PathBuf>,
-
-    /// Turn debugging information on
-    #[arg(short, long, action = clap::ArgAction::Count)]
-    debug: u8,
-
- //    #[command(subcommand)]
- //    command: Option<Commands>,
 }
 
 fn main() -> io::Result<()> {

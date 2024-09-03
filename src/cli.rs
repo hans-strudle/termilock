@@ -10,6 +10,9 @@ pub struct Cli {
     #[arg(short, long)]
     pub pass: String,
 
+    #[arg(short, long)]
+    pub length: Option<usize>,
+
     /// Sets a custom config file
     #[arg(short, long, value_name = "FILE")]
     pub config: Option<PathBuf>,
@@ -21,4 +24,3 @@ pub struct Cli {
  //    #[command(subcommand)]
  //    command: Option<Commands>,
 }
-

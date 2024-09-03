@@ -41,19 +41,37 @@ impl crossterm::Command for Element {
 
 fn main() -> io::Result<()> {
     let cli = Cli::parse();
+    let MIN_PASS_LENGTH = 4;
+    let mut PASS_LENGTH;
+    match cli.length {
+        Some(pass_length) => {
+            PASS_LENGTH = cli.length.unwrap();
+            if pass_length != cli.pass.len() {
+                panic!("Pass length must match passcode");
+            }
+            if pass_length < MIN_PASS_LENGTH {
+                panic!("Minimum passcode length is 4!");
+            } 
+        },
+        None => {
+            // No explicit passcode length, determine based 
+            // off of provided passcode
+            PASS_LENGTH = cli.pass.len();
+        }
+    }
 
     let (mut width, mut height) = terminal::size()?;
     let mut stdout = io::stdout();
 
-    let hashed = pass::hash_pass(&cli.pass);
-    // pass::set_password(&hashed.to_string())?;
+    // let hashed = pass::hash_pass(&cli.pass);
     pass::set_password(&cli.pass)?;
+    // pass::set_password(&cli.pass)?;
     let PASS = pass::get_password()?;
-    // println!("hashed: {}, {}", hashed, pass::hash_pass("3333"));
-    // println!("PASSS");
-    // println!("{}", PASS);
-    // thread::sleep(Duration::from_secs(1));
-    let LOCK_STRING = "_ ".repeat(PASS.len() - 1) + "_";
+    // println!("hashed: {}, {}", hashed, pass::hash_pass("999999999999"));
+    println!("PASSS");
+    println!("{}", PASS);
+    thread::sleep(Duration::from_secs(5));
+    let LOCK_STRING = "_ ".repeat(PASS_LENGTH - 1) + "_";
     terminal::enable_raw_mode()?;
     stdout.queue(terminal::SetTitle("termilock"))?;
     stdout.queue(terminal::Clear(terminal::ClearType::All))?;
@@ -88,7 +106,7 @@ fn main() -> io::Result<()> {
            stdout.queue(cursor::MoveTo(width / 2 - offset + diff, height / 2));
            stdout.flush();
         }
-        match event::read().unwrap() {
+        match event::read()? {
             event::Event::Key(event) => {
                 // println!("{:?}", event);
                 // input.push(event.code.to_string());
@@ -105,13 +123,13 @@ fn main() -> io::Result<()> {
                     terminal::disable_raw_mode();
                     quit = true;
                 }
-                if input == PASS {
+                if pass::hash_pass(&input) == PASS {
                     // succeed
                     terminal::disable_raw_mode();
                     quit = true;
                     stdout.queue(terminal::Clear(terminal::ClearType::All))?;
                 }
-                if input.len() == PASS.len() {
+                if input.len() == PASS_LENGTH {
                     // wrong password
                     // reset?
                     // stdout.queue(terminal::Clear(terminal::ClearType::All));
@@ -127,60 +145,10 @@ fn main() -> io::Result<()> {
     }
     // println!("{:?}", input);
 
+    terminal::disable_raw_mode()?;
     stdout.queue(terminal::Clear(terminal::ClearType::All))?;
+    stdout.queue(cursor::MoveTo(0,0))?;
     stdout.flush()?;
-    terminal::disable_raw_mode();
 
     Ok(())
-    }
-/* 
-    fn main2() {
-        let mut file = fs::File::open("res/lock.txt").unwrap();
-        let mut s = String::new();
-        file.read_to_string(&mut s).unwrap();
-
-        terminal::enable_raw_mode();
-        let mut stdout = io::stdout();
-        let (mut width, mut height) = terminal::size().unwrap();
-
-        stdout.queue(terminal::Clear(terminal::ClearType::All));
-        stdout.queue(cursor::MoveTo(1, 1));
-        // stdout.write(s.as_bytes());
-        stdout.write("🔒".as_bytes());
-
-        stdout.queue(cursor::MoveTo(width / 2 - 5, height / 2));
-        stdout.write(LOCK_STRING.as_bytes());
-        stdout.queue(cursor::MoveTo(width / 2 - 5, height / 2));
-        stdout.flush();
-        let mut quit = false;
-        let poll_duration = Duration::from_millis(500);
-        let mut input = Vec::new();
-        while !quit {
-            // match event::poll(poll_duration).unwrap() {
-
-            match event::read().unwrap() {
-                event::Event::Key(event) => {
-                    // println!("{:?}", event);
-                    input.push(event.code.to_string());
-                    stdout.write("*".as_bytes());
-                    let mut diff = (2 * input.len()) as u16;
-                    stdout.queue(cursor::MoveTo(width / 2 - 5 + diff, height / 2));
-                    stdout.flush();
-                    if event.modifiers.contains(event::KeyModifiers::CONTROL) {
-                        println!("Ctrl+C!");
-                        terminal::disable_raw_mode();
-                        quit = true;
-                    }
-                    if input == PASS {
-                        terminal::disable_raw_mode();
-                        quit = true;
-                    }
-                },
-                _ => {}
-            }
-            // quit = true; 
-        }
-        println!("{:?}", input);
-
-        }
-*/
+}

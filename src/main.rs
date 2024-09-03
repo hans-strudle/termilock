@@ -2,16 +2,13 @@
 mod pass;
 mod cli;
 use cli::Cli;
-use clap::{Parser, Subcommand};
+use clap::Parser;
 use std::io::{Write, self};
-use std::fs;
-use std::io::prelude::*;
 use std::fmt;
-use std::env;
 use crossterm::{
-    ExecutableCommand, QueueableCommand,
-    terminal, cursor, style::{self, Stylize},
-    event, csi
+    QueueableCommand,
+    terminal, cursor, style::{Stylize},
+    event, csi,
 };
 use std::time::Duration;
 use std::thread;
@@ -42,7 +39,7 @@ impl crossterm::Command for Element {
 fn main() -> io::Result<()> {
     let cli = Cli::parse();
     let MIN_PASS_LENGTH = 4;
-    let mut PASS_LENGTH;
+    let PASS_LENGTH;
     match cli.length {
         Some(pass_length) => {
             PASS_LENGTH = cli.length.unwrap();
@@ -60,7 +57,7 @@ fn main() -> io::Result<()> {
         }
     }
 
-    let (mut width, mut height) = terminal::size()?;
+    let (width, height) = terminal::size()?;
     let mut stdout = io::stdout();
 
     // let hashed = pass::hash_pass(&cli.pass);
@@ -68,9 +65,7 @@ fn main() -> io::Result<()> {
     // pass::set_password(&cli.pass)?;
     let PASS = pass::get_password()?;
     // println!("hashed: {}, {}", hashed, pass::hash_pass("999999999999"));
-    println!("PASSS");
-    println!("{}", PASS);
-    thread::sleep(Duration::from_secs(5));
+    // thread::sleep(Duration::from_secs(5));
     let LOCK_STRING = "_ ".repeat(PASS_LENGTH - 1) + "_";
     terminal::enable_raw_mode()?;
     stdout.queue(terminal::SetTitle("termilock"))?;
@@ -86,43 +81,51 @@ fn main() -> io::Result<()> {
     // let poll_duration = Duration::from_millis(500);
     // let mut input = Vec::new();
     let mut input = String::new();
+    let star = format!("{}", "*".blue());
     while !quit {
         let offset = (LOCK_STRING.len() / 2) as u16;
-        if !is_entering { 
-            stdout.queue(cursor::MoveTo(1, 1));
-            // stdout.write("🔒".as_bytes());
-
-            stdout.queue(cursor::MoveTo(width / 2 - offset, height / 2));
-            stdout.write(LOCK_STRING.as_bytes());
-            stdout.queue(cursor::MoveTo(width / 2 - offset, height / 2));
-            stdout.flush();
+        let mut x = 0;
+        for place in 0..PASS_LENGTH {
+            stdout.queue(cursor::MoveTo(width / 2 - offset + x, height / 2));
+            stdout.write("_".as_bytes())?;
+            stdout.queue(cursor::MoveTo(width / 2 - offset + x, height / 2));
+            if input.len() > place {
+                stdout.write(star.as_bytes())?;
+            }
+            stdout.flush()?;
+            x += 2;
         }
         if bad_pass_attempt {
-           // stdout.queue(Element::new("WRONG PASSCODE", width / 2 - 8, height / 2))?;
-           stdout.queue(cursor::MoveTo(width / 2 - 5, height / 2 + 2));
-           let s = format!("{}", "WRONG PASS".red());
-           stdout.write(s.as_bytes());
-           let diff = (2 * input.len()) as u16;
-           stdout.queue(cursor::MoveTo(width / 2 - offset + diff, height / 2));
-           stdout.flush();
+            stdout.queue(cursor::MoveTo(width / 2 - 5, height / 2 + 2))?;
+            let s = format!("{}", "WRONG PASS".red());
+            stdout.write(s.as_bytes())?;
         }
+        // reset cursor to current pass input
+        let diff = (2 * input.len()) as u16;
+        stdout.queue(cursor::MoveTo(width / 2 - offset + diff, height / 2));
+        stdout.flush();
+
         match event::read()? {
             event::Event::Key(event) => {
-                // println!("{:?}", event);
-                // input.push(event.code.to_string());
                 is_entering = true;
-                input.push_str(&event.code.to_string());
-                // let star = format!("{}", "*".green().on_grey());
-                let star = "*";
-                stdout.write(star.as_bytes());
-                let diff = (2 * input.len()) as u16;
-                stdout.queue(cursor::MoveTo(width / 2 - offset + diff, height / 2));
-                stdout.flush();
-                if event.modifiers.contains(event::KeyModifiers::CONTROL) {
-                    println!("Ctrl+C!");
-                    terminal::disable_raw_mode();
-                    quit = true;
+                match event.code {
+                    event::KeyCode::Tab => {}, // skip tabs?
+                    event::KeyCode::Backspace => {
+                        if input.len() > 0 {
+                            input.pop();
+                        }
+                    },
+                    _ => {
+                        if event.code == event::KeyCode::Char('c') {
+                            if event.modifiers.contains(event::KeyModifiers::CONTROL){
+                                quit = true;
+                            }
+                        }
+                        input.push_str(&event.code.to_string());
+                        // stdout.write(star.as_bytes());
+                    }
                 }
+                stdout.flush();
                 if pass::hash_pass(&input) == PASS {
                     // succeed
                     terminal::disable_raw_mode();
@@ -141,6 +144,7 @@ fn main() -> io::Result<()> {
             },
             _ => {}
         }
+        stdout.flush();
         // quit = true; 
     }
     // println!("{:?}", input);

@@ -1,11 +1,10 @@
-use std::fs::{self, write};
+use std::fs::{self};
 use std::io;
 
 use sha3::{Digest, Sha3_256};
 
 
 use std::io::prelude::*;
-use std::hash::{DefaultHasher, Hash, Hasher};
 
 pub fn hash_pass(pass: &str) -> String {
     //    let mut s = DefaultHasher::new();

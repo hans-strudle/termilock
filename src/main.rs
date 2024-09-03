@@ -1,6 +1,7 @@
 // use crossterm::terminal;
 mod pass;
 mod cli;
+mod plugins;
 use cli::Cli;
 use clap::Parser;
 use std::io::{Write, self};
@@ -59,7 +60,18 @@ fn main() -> io::Result<()> {
 
     let (mut width, mut height) = terminal::size()?;
     let mut stdout = io::stdout();
-
+    let mut plugins = Vec::new();
+    let f = || -> String {
+        return "LOCKED".to_string();
+        // chrono::offset::Local::now().to_string()
+    };
+    let time_plugin = plugins::Plugin {
+        x: 1,
+        y: 1,
+        delay: Some(Duration::from_millis(500)),
+        func: f,
+    };
+    plugins.push(time_plugin);
     // let hashed = pass::hash_pass(&cli.pass);
     pass::set_password(&cli.pass)?;
     // pass::set_password(&cli.pass)?;
@@ -82,6 +94,9 @@ fn main() -> io::Result<()> {
     let mut input = String::new();
     let star = format!("{}", "*".blue());
     while !quit {
+        for plugin in &plugins {
+            plugin.call(&mut stdout);
+        }
         let offset = (LOCK_STRING.len() / 2) as u16;
         let mut x = 0;
         for place in 0..PASS_LENGTH {

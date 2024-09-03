@@ -1,8 +1,15 @@
 // use crossterm::terminal;
+mod pass;
 use std::io::{Write, self};
 use std::fs;
 use std::io::prelude::*;
 use std::fmt;
+use std::env;
+
+use std::path::PathBuf;
+
+use clap::{Parser, Subcommand};
+
 // use crate::{csi, impl_display, Command};
 
 use crossterm::{
@@ -13,9 +20,9 @@ use crossterm::{
 use std::time::Duration;
 use std::thread;
 
-const LOCK_STRING: &str = "_ _ _ _";
+// const LOCK_STRING: &str = "_ _ _ _";
 // const PASS: [&str; 4] = ["1","2","3","4"];
-const PASS: &str = "1234";
+// const PASS: &str = "1234";
 
 struct Element {
     x: u16,
@@ -40,10 +47,42 @@ impl crossterm::Command for Element {
     }
 }
 
+#[derive(Parser)]
+#[command(version, about, long_about = None)]
+struct Cli {
+    /// Optional name to operate on
+    name: Option<String>,
+
+    #[arg(short, long)]
+    pass: String,
+
+    /// Sets a custom config file
+    #[arg(short, long, value_name = "FILE")]
+    config: Option<PathBuf>,
+
+    /// Turn debugging information on
+    #[arg(short, long, action = clap::ArgAction::Count)]
+    debug: u8,
+
+ //    #[command(subcommand)]
+ //    command: Option<Commands>,
+}
+
 fn main() -> io::Result<()> {
+    let cli = Cli::parse();
+
     let (mut width, mut height) = terminal::size()?;
     let mut stdout = io::stdout();
 
+    let hashed = pass::hash_pass(&cli.pass);
+    // pass::set_password(&hashed.to_string())?;
+    pass::set_password(&cli.pass)?;
+    let PASS = pass::get_password()?;
+    // println!("hashed: {}, {}", hashed, pass::hash_pass("3333"));
+    // println!("PASSS");
+    // println!("{}", PASS);
+    // thread::sleep(Duration::from_secs(1));
+    let LOCK_STRING = "_ ".repeat(PASS.len() - 1) + "_";
     terminal::enable_raw_mode()?;
     stdout.queue(terminal::SetTitle("termilock"))?;
     stdout.queue(terminal::Clear(terminal::ClearType::All))?;
@@ -59,7 +98,7 @@ fn main() -> io::Result<()> {
     // let mut input = Vec::new();
     let mut input = String::new();
     while !quit {
-        let offset = LOCK_STRING.len() as u16;
+        let offset = (LOCK_STRING.len() / 2) as u16;
         if !is_entering { 
             stdout.queue(cursor::MoveTo(1, 1));
             // stdout.write("🔒".as_bytes());
@@ -71,7 +110,7 @@ fn main() -> io::Result<()> {
         }
         if bad_pass_attempt {
            // stdout.queue(Element::new("WRONG PASSCODE", width / 2 - 8, height / 2))?;
-           stdout.queue(cursor::MoveTo(width / 2 - offset - 1, height / 2 + 2));
+           stdout.queue(cursor::MoveTo(width / 2 - 5, height / 2 + 2));
            let s = format!("{}", "WRONG PASS".red());
            stdout.write(s.as_bytes());
            let diff = (2 * input.len()) as u16;
@@ -90,11 +129,11 @@ fn main() -> io::Result<()> {
                 let diff = (2 * input.len()) as u16;
                 stdout.queue(cursor::MoveTo(width / 2 - offset + diff, height / 2));
                 stdout.flush();
-                /*if event.modifiers.contains(event::KeyModifiers::CONTROL) {
+                if event.modifiers.contains(event::KeyModifiers::CONTROL) {
                     println!("Ctrl+C!");
                     terminal::disable_raw_mode();
                     quit = true;
-                }*/
+                }
                 if input == PASS {
                     // succeed
                     terminal::disable_raw_mode();

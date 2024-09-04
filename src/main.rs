@@ -40,11 +40,32 @@ impl crossterm::Command for Element {
 fn main() -> io::Result<()> {
     let cli = Cli::parse();
     let MIN_PASS_LENGTH = 4;
-    let PASS_LENGTH;
-    match cli.length {
+    let PASS_LENGTH = 6;
+    let PASSWORD_CREATED = pass::is_password_file_present();
+    let mut PASS = String::new();
+    let mut SET_PASSWORD = false;
+    match cli.pass {
+        Some(p) => {
+            PASS = p;
+        },
+        None => {
+            if !PASSWORD_CREATED {
+                SET_PASSWORD = true;
+                PASS = " ".repeat(8);
+                println!("SET PASS {}", PASS);
+            } else {
+                PASS = pass::get_password()?;
+                println!("GOT PASS {}", PASS);
+            }
+        }
+    }
+    /* match cli.length {
         Some(pass_length) => {
+            if PASSWORD_CREATED {
+                panic!("Password already set!");
+            }
             PASS_LENGTH = cli.length.unwrap();
-            if pass_length != cli.pass.len() {
+            if pass_length != PASS.len() {
                 panic!("Pass length must match passcode");
             }
             if pass_length < MIN_PASS_LENGTH {
@@ -54,12 +75,20 @@ fn main() -> io::Result<()> {
         None => {
             // No explicit passcode length, determine based 
             // off of provided passcode
-            PASS_LENGTH = cli.pass.len();
+            PASS_LENGTH = PASS.len();
         }
-    }
+    }*/
 
-    let (mut width, mut height) = terminal::size()?;
     let mut stdout = io::stdout();
+
+    // if !PASSWORD_CREATED {
+        // pass::set_password(&cli.pass)?;
+    // } else {
+        // let PASS = pass::get_password()?;
+    // }
+
+    // thread::sleep(Duration::from_secs(5));
+    let (mut width, mut height) = terminal::size()?;
     let mut plugins = Vec::new();
     let f = || -> String {
         return "LOCKED".to_string();
@@ -72,12 +101,6 @@ fn main() -> io::Result<()> {
         func: f,
     };
     plugins.push(time_plugin);
-    // let hashed = pass::hash_pass(&cli.pass);
-    pass::set_password(&cli.pass)?;
-    // pass::set_password(&cli.pass)?;
-    let PASS = pass::get_password()?;
-    // println!("hashed: {}, {}", hashed, pass::hash_pass("999999999999"));
-    // thread::sleep(Duration::from_secs(5));
     let LOCK_STRING = "_ ".repeat(PASS_LENGTH - 1) + "_";
     terminal::enable_raw_mode()?;
     stdout.queue(terminal::SetTitle("termilock"))?;
@@ -99,12 +122,17 @@ fn main() -> io::Result<()> {
         }
         let offset = (LOCK_STRING.len() / 2) as u16;
         let mut x = 0;
-        for place in 0..PASS_LENGTH {
+        for (idx, place) in (0..PASS_LENGTH).enumerate() {
             stdout.queue(cursor::MoveTo(width / 2 - offset + x, height / 2));
             stdout.write("_".as_bytes())?;
             stdout.queue(cursor::MoveTo(width / 2 - offset + x, height / 2));
             if input.len() > place {
-                stdout.write(star.as_bytes())?;
+                if SET_PASSWORD {
+                    let ch = input.chars().nth(idx).unwrap();
+                    stdout.write(ch.to_string().as_bytes())?;
+                } else {
+                    stdout.write(star.as_bytes())?;
+                }
             }
             // stdout.flush()?;
             x += 2;
@@ -112,6 +140,11 @@ fn main() -> io::Result<()> {
         if bad_pass_attempt {
             stdout.queue(cursor::MoveTo(width / 2 - 5, height / 2 + 2))?;
             let s = format!("{}", "WRONG PASS".red());
+            stdout.write(s.as_bytes())?;
+        }
+        if SET_PASSWORD {
+            stdout.queue(cursor::MoveTo(width / 2 - 5, height / 2 + 2))?;
+            let s = format!("{}", "SET PASSWORD".green());
             stdout.write(s.as_bytes())?;
         }
         // reset cursor to current pass input
@@ -157,9 +190,15 @@ fn main() -> io::Result<()> {
                 if input.len() == PASS_LENGTH {
                     // wrong password
                     // reset?
-                    bad_pass_attempt = true;
+                    if SET_PASSWORD {
+                        PASS = pass::set_password(&input)?;
+                        SET_PASSWORD = false;
+                    } else {
+                        bad_pass_attempt = true;
+                    }
                     input = "".to_string();
-                    // stdout.flush()?;
+                    stdout.queue(terminal::Clear(terminal::ClearType::All))?;
+                    stdout.flush()?;
                 }
             },
             _ => {}

@@ -8,7 +8,7 @@ pub struct Cli {
     pub name: Option<String>,
 
     #[arg(short, long)]
-    pub pass: String,
+    pub pass: Option<String>,
 
     #[arg(short, long)]
     pub length: Option<usize>,

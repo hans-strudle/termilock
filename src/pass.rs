@@ -6,9 +6,6 @@ use std::io::prelude::*;
 const PASSWORD_FILE: &str = "/tmp/termilock-passfile.txt";
 
 pub fn hash_pass(pass: &str) -> String {
-    //    let mut s = DefaultHasher::new();
-    //    pass.hash(&mut s);
-    //    s.finish()
     let mut hasher = Sha3_256::new();
 
     // write input message
@@ -19,12 +16,27 @@ pub fn hash_pass(pass: &str) -> String {
     format!("{:x}", result)
 }
 
-pub fn set_password(pass: &str) -> io::Result<()> {
+pub fn set_password(pass: &str) -> io::Result<String> {
     // let mut file = get_password_file()?;
     // file.write(pass.as_bytes())?;
     let mut file = fs::File::create(PASSWORD_FILE)?;
     let hashed = hash_pass(pass);
-    file.write_all(hashed.as_bytes())
+    file.write_all(hashed.as_bytes())?;
+    Ok(hashed)
+}
+
+pub fn is_password_file_present() -> bool {
+    // if let Ok(present) = get_password_file() {
+    match get_password_file() {
+        Ok(_) => {
+            return true
+        },
+        Err(e) => {
+            println!("{}", e);
+            return false
+        }
+    }
+    false
 }
 
 fn get_password_file() -> io::Result<fs::File> {

@@ -116,16 +116,27 @@ fn main() -> io::Result<()> {
     // let poll_duration = Duration::from_millis(500);
     let mut input = String::new();
     let star = format!("{}", "*".blue());
+
+    // let f = std::fs::File::open("res/lock.txt")?;
+    let mut lock_content = std::fs::read_to_string("res/lock.txt")?;
+    // f.read_to_string(&mut lock_content);
+
     while !quit {
         for plugin in &plugins {
             plugin.call(&mut stdout);
         }
         let offset = (LOCK_STRING.len() / 2) as u16;
         let mut x = 0;
+        let mut iii = 0;
+        for line in lock_content.lines() {
+            stdout.queue(cursor::MoveTo(width / 2 - 7, height / 2 - 8 + iii));
+            stdout.write(line.as_bytes())?;
+            iii += 1;
+        }
         for (idx, place) in (0..PASS_LENGTH).enumerate() {
-            stdout.queue(cursor::MoveTo(width / 2 - offset + x, height / 2));
+            stdout.queue(cursor::MoveTo(width / 2 - offset + x, height / 2 + 3));
             stdout.write("_".as_bytes())?;
-            stdout.queue(cursor::MoveTo(width / 2 - offset + x, height / 2));
+            stdout.queue(cursor::MoveTo(width / 2 - offset + x, height / 2 + 3));
             if input.len() > place {
                 if SET_PASSWORD {
                     let ch = input.chars().nth(idx).unwrap();
@@ -138,18 +149,18 @@ fn main() -> io::Result<()> {
             x += 2;
         }
         if bad_pass_attempt {
-            stdout.queue(cursor::MoveTo(width / 2 - 5, height / 2 + 2))?;
+            stdout.queue(cursor::MoveTo(width / 2 - 5, height / 2 + 5))?;
             let s = format!("{}", "WRONG PASS".red());
             stdout.write(s.as_bytes())?;
         }
         if SET_PASSWORD {
-            stdout.queue(cursor::MoveTo(width / 2 - 5, height / 2 + 2))?;
+            stdout.queue(cursor::MoveTo(width / 2 - 5, height / 2 + 5))?;
             let s = format!("{}", "SET PASSWORD".green());
             stdout.write(s.as_bytes())?;
         }
         // reset cursor to current pass input
         let diff = (2 * input.len()) as u16;
-        stdout.queue(cursor::MoveTo(width / 2 - offset + diff, height / 2))?;
+        stdout.queue(cursor::MoveTo(width / 2 - offset + diff, height / 2 + 3))?;
         stdout.flush()?;
 
         //if event::poll(Duration::ZERO)? {

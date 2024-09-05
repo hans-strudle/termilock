@@ -1,0 +1,12 @@
+{
+    "plugins": [
+        {
+            "name": "test",
+           "x": 1, 
+           "y": 1, 
+           "command": "pmset -g batt"
+        }
+    
+    ]
+    
+}

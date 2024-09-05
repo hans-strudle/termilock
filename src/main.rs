@@ -2,6 +2,8 @@
 mod pass;
 mod cli;
 mod plugins;
+use std::process::Command;
+
 use cli::Cli;
 use clap::Parser;
 use std::io::{Write, self};
@@ -94,6 +96,21 @@ fn main() -> io::Result<()> {
         return "LOCKED".to_string();
         // chrono::offset::Local::now().to_string()
     };
+    let battF = || -> String {
+        let cmd = "pmset -g batt";
+        let output = Command::new("sh")
+            .arg("-c")
+            .arg(&cmd)
+            .output()
+            .expect("pmset -g batt");
+        String::from_utf8(output.stdout).unwrap()
+    };
+    let battery_plugin = plugins::Plugin {
+        x: 1,
+        y: height - 4,
+        delay: Some(Duration::from_secs(1)),
+        func: battF,
+    };
     let time_plugin = plugins::Plugin {
         x: 1,
         y: 1,
@@ -101,6 +118,7 @@ fn main() -> io::Result<()> {
         func: f,
     };
     plugins.push(time_plugin);
+    plugins.push(battery_plugin);
     let LOCK_STRING = "_ ".repeat(PASS_LENGTH - 1) + "_";
     terminal::enable_raw_mode()?;
     stdout.queue(terminal::SetTitle("termilock"))?;

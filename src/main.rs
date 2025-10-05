@@ -91,7 +91,13 @@ fn main() -> io::Result<()> {
 
     // thread::sleep(Duration::from_secs(5));
     let (mut width, mut height) = terminal::size()?;
-    let mut plugins = Vec::new();
+    let mut Plugins: plugins::Plugins = plugins::Plugins {
+        config_file: "config.json".to_string(),
+        findDir: "plugins/".to_string(),
+        list: Vec::new(),
+    };
+    Plugins.load();
+/*
     let f = || -> String {
         return "LOCKED".to_string();
         // chrono::offset::Local::now().to_string()
@@ -109,16 +115,19 @@ fn main() -> io::Result<()> {
         x: 1,
         y: height - 4,
         delay: Some(Duration::from_secs(1)),
-        func: battF,
+        // func: battF,
+        cmd: "pmset -g batt".to_string(),
     };
     let time_plugin = plugins::Plugin {
         x: 1,
         y: 1,
         delay: Some(Duration::from_millis(500)),
-        func: f,
+        // func: f,
+        cmd: "echo LOCKED".to_string(),
     };
     plugins.push(time_plugin);
     plugins.push(battery_plugin);
+    */
     let LOCK_STRING = "_ ".repeat(PASS_LENGTH - 1) + "_";
     terminal::enable_raw_mode()?;
     stdout.queue(terminal::SetTitle("termilock"))?;
@@ -140,12 +149,12 @@ fn main() -> io::Result<()> {
     // f.read_to_string(&mut lock_content);
 
     while !quit {
-        for plugin in &plugins {
-            plugin.call(&mut stdout);
-        }
         let offset = (LOCK_STRING.len() / 2) as u16;
         let mut x = 0;
         let mut iii = 0;
+        for plugin in &Plugins.list {
+            &plugin.call(&mut stdout);
+        }
         for line in lock_content.lines() {
             stdout.queue(cursor::MoveTo(width / 2 - 7, height / 2 - 8 + iii));
             stdout.write(line.as_bytes())?;
@@ -179,6 +188,7 @@ fn main() -> io::Result<()> {
         // reset cursor to current pass input
         let diff = (2 * input.len()) as u16;
         stdout.queue(cursor::MoveTo(width / 2 - offset + diff, height / 2 + 3))?;
+
         stdout.flush()?;
 
         //if event::poll(Duration::ZERO)? {
